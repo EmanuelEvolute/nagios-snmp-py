@@ -1,9 +1,9 @@
 #!/usr/bin/python2
-# Script version 1.0.1
+# Script version 1.1
 # This script was created for python versions 2.7.13 and might not run on other versions
 
 # Imports
-from easysnmp import Session
+from easysnmp import Session, exceptions
 from time import time, sleep
 from argparse import ArgumentParser
 
@@ -13,7 +13,8 @@ requiredargs = args.add_argument_group('required arguments')
 conflictargs = args.add_argument_group('non-concurrent required arguments')
 requiredargs.add_argument('--ports', nargs='+', required=True, help='Port numbers from 1 to how many ports your '
                                                                     'switch/router has')
-requiredargs.add_argument('--hostname', required=True, type=str, help='The IP address or domain to test')
+requiredargs.add_argument('--hostname', required=True, type=str, help='The IP address or domain to connect to')
+requiredargs.add_argument('--community', default='public', type=str, help='The "password" to connect to the host with')
 conflictargs.add_argument('--above', nargs=2, type=int, metavar=('WARNING', 'CRITICAL'),
                           help='The warning and critical limits for maximum bandwidth usage')
 conflictargs.add_argument('--below', nargs=2, type=int, metavar=('WARNING', 'CRITICAL'),
@@ -47,10 +48,10 @@ seconds = min(max(a.seconds, 1.0), 10.0)  # Wait for 1 to 10 seconds
 
 # Create SNMP session
 try:
-    session = Session(hostname=a.hostname, community='public', version=2)
+    session = Session(hostname=a.hostname, community=a.community, version=2)
 except:
     try:
-        session = Session(hostname=a.hostname, community='public', version=1)
+        session = Session(hostname=a.hostname, community=a.community, version=1)
     except:
         print 'Invalid hostname or host timed out'
         exit(2)
@@ -75,8 +76,11 @@ try:
             get = session.get('1.3.6.1.2.1.2.2.1.16.' + port)  # Get upload bytes
             ports[port][3] = time()  # UpTime = Now
             ports[port][4] = int(get.value)  # UpVal = Upload bytes
-except:
-    print 'Invalid ports past port %s inclusive' % port
+except Exception, e:
+    if type(e) is exceptions.EasySNMPTimeoutError:
+        print e
+    else:
+        print 'Invalid ports past port %s inclusive' % port
     exit(2)
 
 sleep(seconds)  # Wait X seconds
@@ -85,33 +89,39 @@ for port in ports:
     if ports[port][0]:  # Oper == True
         get = session.get('1.3.6.1.2.1.2.2.1.10.' + port)  # Get download bytes
         # Calculate download speed in bits/s accounting for time difference between readings
-        dlspeed = (int(get.value) - ports[port][2]) / (time() - ports[port][1]) * 8
+        ports[port][2] = (int(get.value) - ports[port][2]) / (time() - ports[port][1]) * 8
         get = session.get('1.3.6.1.2.1.2.2.1.16.' + port)  # Get upload bytes
         # Calculate upload speed in bits/s accounting for time difference between readings
-        upspeed = (int(get.value) - ports[port][4]) / (time() - ports[port][3]) * 8
+        ports[port][4] = (int(get.value) - ports[port][4]) / (time() - ports[port][3]) * 8
 
         # Look for warning or critical violations
-        if dlspeed > ceilcrit or dlspeed < floorcrit:
+        if ports[port][2] > ceilcrit or ports[port][2] < floorcrit:
             errors['crit'].append(port)
-        elif dlspeed > ceilwarn or dlspeed < floorwarn:
+        elif ports[port][2] > ceilwarn or ports[port][2] < floorwarn:
             errors['warn'].append(port)
-        if port not in errors['crit'] and (upspeed > ceilcrit or upspeed < floorcrit):
+        if port not in errors['crit'] and (ports[port][4] > ceilcrit or ports[port][4] < floorcrit):
             errors['crit'].append(port)
-        elif port not in errors['warn'] and port not in errors['crit'] and (upspeed > ceilwarn or upspeed < floorwarn):
+        elif port not in errors['warn'] and port not in errors['crit'] and (ports[port][4] > ceilwarn or
+                                                                            ports[port][4] < floorwarn):
             errors['warn'].append(port)
+
+# Concatenate performance data
+perf_data = ''
+for port in ports:
+    perf_data += ", p%s_dl=%s, p%s_up=%s" % (port, round(ports[port][2],2), port, round(ports[port][4],2))
 
 # Print violations and exit
 if len(errors['crit']) > 0:
     err = ''
     for item in errors['crit']:
         err += str(item) + ' '
-    print err + '| warn_count=%s, crit_count=%s' % (len(errors['warn']), len(errors['crit']))
+    print '%s| warn_count=%s, crit_count=%s%s' % (err, len(errors['warn']), len(errors['crit']), perf_data)
     exit(2)
 elif len(errors['warn']) > 0:
     err = ''
     for item in errors['warn']:
         err += str(item) + ' '
-    print err + '| warn_count=%s, crit_count=0' % len(errors['warn'])
+    print '%s| warn_count=%s, crit_count=0%s' % (err, len(errors['warn']), perf_data)
     exit(1)
 else:
-    print 'OK | warn_count=0, crit_count=0'
+    print 'OK | warn_count=0, crit_count=0%s' % perf_data
