@@ -1,6 +1,12 @@
 # snmp-py
-Simple Network Management Protocol script in Python that returns port numbers in excess of bandwith usage from a hostname with performance data.
+Simple Network Management Protocol script in Python that returns port numbers in excess of bandwith usage from a hostname with performance data. **This script works as a plugin for NAGIOS/ICINGA.**
 
+# Main files
+snmp_py3.py is the main script for Python 3.5.3
+
+snmp_py2.py is the main script for Python 2.7.13
+
+These files might not work with other versions of Python.
 # Dependencies
 easysnmp
 
@@ -10,13 +16,11 @@ argparse
 
 # Arguments
 ### Required:
-
 --ports PORTS ...
 
 --hostname HOSTNAME
 
 ### Non-concurrent and required:
-
 --above WARNING CRITICAL
 
 OR
@@ -24,7 +28,6 @@ OR
 --below WARNING CRITICAL
 
 ### Optional:
-
 -h
 
 --help
@@ -69,4 +72,4 @@ If the warn list has any entries but the critical list does not, the warn list i
 
 If there are no entries on either list, OK is printed.
 
-All of these outputs are followed by | warn_count=LEN(WARN_LIST), crit_count=LEN(CRIT_LIST).
+All of these outputs are followed by | warn_count=LEN(WARN_LIST), crit_count=LEN(CRIT_LIST), PORTS=BITRATE.
