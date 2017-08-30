@@ -72,4 +72,4 @@ If the warn list has any entries but the critical list does not, the warn list i
 
 If there are no entries on either list, OK is printed.
 
-All of these outputs are followed by | warn_count=LEN(WARN_LIST), crit_count=LEN(CRIT_LIST), PORTS=BITRATE.
+All of these outputs are followed by | warn_count=LEN(WARN_LIST), crit_count=LEN(CRIT_LIST), PORTS=BITRATE. This is performance data used by ICINGA to plot graphs.
