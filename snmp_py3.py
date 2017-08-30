@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-# Script version 1.0
+# Script version 1.0.1
 # This script was created for python versions 3.5.3 and might not run on other versions
 
 # Imports
@@ -11,11 +11,15 @@ from argparse import ArgumentParser
 args = ArgumentParser()
 requiredargs = args.add_argument_group('required arguments')
 conflictargs = args.add_argument_group('non-concurrent required arguments')
-requiredargs.add_argument('--ports', nargs='+', required=True)
-requiredargs.add_argument('--hostname', required=True, type=str)
-conflictargs.add_argument('--above', nargs=2, type=int, metavar=('WARNING', 'CRITICAL'))
-conflictargs.add_argument('--below', nargs=2, type=int, metavar=('WARNING', 'CRITICAL'))
-args.add_argument('--seconds', type=float, default=1.0, help='Default: 1.0 Minimum: 1.0 Maximum: 10.0')
+requiredargs.add_argument('--ports', nargs='+', required=True, help='Port numbers from 1 to how many ports your '
+                                                                    'switch/router has')
+requiredargs.add_argument('--hostname', required=True, type=str, help='The IP address or domain to test')
+conflictargs.add_argument('--above', nargs=2, type=int, metavar=('WARNING', 'CRITICAL'),
+                          help='The warning and critical limits for maximum bandwidth usage')
+conflictargs.add_argument('--below', nargs=2, type=int, metavar=('WARNING', 'CRITICAL'),
+                          help='The warning and critical limits for minimum bandwidth usage')
+args.add_argument('--seconds', type=float, default=1.0, help='Number of seconds the script will wait before probing. '
+                                                             'Default: 1.0 Minimum: 1.0 Maximum: 10.0')
 
 try:
     # Validate args
